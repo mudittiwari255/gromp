@@ -48,6 +48,8 @@ Requirements: JDK 17 and the Android SDK (API 36).
 
 Every push to `main` runs the GitHub Actions workflow in `.github/workflows/android.yml`. It runs the tests, builds debug and release APKs, checks that the release APK has no `INTERNET` permission, and uploads both APKs as the `gromp-apk` artifact.
 
+**Releases:** bump `versionName` (and `versionCode`) in `app/build.gradle.kts` and push to `main`. The Release workflow builds the APK, tags `v<version>` and publishes it on the GitHub Releases page. If that version already has a release, nothing happens.
+
 The release build is signed with the debug key so CI produces an installable APK. Set up your own keystore before publishing.
 
 ## First run on a phone
