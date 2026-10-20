@@ -1,0 +1,61 @@
+name: Release
+
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Test and build
+        run: ./gradlew --no-daemon testDebugUnitTest assembleRelease
+
+      - name: Verify no INTERNET permission
+        run: |
+          AAPT=$(ls $ANDROID_HOME/build-tools/*/aapt2 | tail -1)
+          if $AAPT dump permissions app/build/outputs/apk/release/app-release.apk | grep -q "android.permission.INTERNET"; then
+            echo "INTERNET permission found in release APK"; exit 1
+          fi
+
+      - name: Name the APK
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          cp app/build/outputs/apk/release/app-release.apk "gromp-$VERSION.apk"
+          sha256sum "gromp-$VERSION.apk" > "gromp-$VERSION.apk.sha256"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Gromp ${{ github.ref_name }}
+          files: |
+            gromp-*.apk
+            gromp-*.apk.sha256
+          body: |
+            Fully offline. No internet permission, no account, no analytics.
+
+            **Install:** download `gromp-*.apk` on your Android phone (Android 9 or newer), open it and allow installing from this source.
+
+            **In this release**
+            - Today dashboard: screen time vs your limit, pace vs your usual day, pickups, first pickup, longest session, notifications, hour-by-hour chart, top apps
+            - Trends: week / month / year, 7×24 heatmap, time by category
+            - App detail with visit lengths and a 30-day trend
+            - Insights from simple on-device rules, goal days without streak guilt
+            - Soft locks: breathe-before-opening pause, daily limits, focus hours
+            - JSON backup export / restore, delete everything
+
+            **First run:** grant Usage access. For locks, turn on *Gromp locks* in Accessibility settings. On Xiaomi, Oppo, Vivo, Realme and Samsung, allow background activity / Autostart for Gromp.
+
+            Note: this APK is signed with a development key. A future build signed with a release key will need a fresh install.
