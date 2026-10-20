@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Gromp</string>
+    <string name="accessibility_label">Gromp locks</string>
+    <string name="accessibility_summary">Shows a pause, limit or focus screen when you open an app you chose to lock.</string>
+    <string name="accessibility_description">Gromp uses this service only to notice which app just came to the front, so it can show the pause, daily limit or focus hours screen you set up for that app. It does not read the content of any screen, does not record what you type, and has no internet access. Everything stays on this phone.</string>
+    <string name="notification_listener_label">Gromp notification counter</string>
+</resources>
