@@ -19,6 +19,22 @@ A calm, fully offline Android app that shows you where your phone time goes, and
 | **Locks (v1.5)** | *Breathe before opening* (5-second pause), *daily limit* screen (hold 3 s for 5 more minutes), and *focus hours* (selected apps rest; hold 5 s to open for 5 minutes) |
 | **Category limits** | One daily limit shared by every app in a category (e.g. Social 1h). Whichever runs out first, the app's own limit or its category's, shows the limit screen; "5 more minutes" applies to the whole category |
 
+## Smart nudges (v0.4)
+
+Everything is rule-based and runs on the phone. No model, no network.
+
+| Feature | What it does | Edition |
+| --- | --- | --- |
+| **The real cost** | Turns screen time into things you said you'd rather do ("1h 40m on Instagram. That's 5 chapters of a book."), plus a yearly projection in waking days | Both |
+| **Was it worth it?** | One-tap rating after 10+ minute sessions in pull apps, on Today and as a notification. Builds a per-app worth score | Both |
+| **Intentions** | "What are you opening Instagram for?" before pull apps. If you said *reply* and you're still there 10 minutes later, Gromp checks in | Full |
+| **Binge check-ins** | After 30 / 20 / 15 minutes straight (Gentle / Honest / Tough love) in one pull app | Full |
+| **Scroll-loop check-ins** | Hopping between 3+ pull apps within 10 minutes | Full |
+| **Weak spots** | Learns hours that reliably swallow you (e.g. weekday nights around 10 pm on Instagram) from four weeks of per-app hourly history, and sends a heads-up 10 to 45 minutes before | Both |
+| **Goals that taper** | After a week under your limit on most days, the limit drops ~7% (never below a floor you set). Bad weeks never make it stricter | Both |
+| **Sunday review** | Wins, slips, the real cost, your limit, and one experiment for next week, chosen by rules (close a weak spot, limit a low-worth app, mute a noisy app, phone face down, phone-free mornings) | Both |
+| **Tone** | Gentle, Honest (default) or Tough love, for every message and threshold | Both |
+
 ## Editions
 
 | | Lite | Full |
@@ -54,7 +70,7 @@ NotificationListenerService ──► per-app daily counts (content is never rea
 Requirements: JDK 17 and the Android SDK (API 36).
 
 ```bash
-./gradlew testFullDebugUnitTest   # parser, focus schedule and lock decision tests
+./gradlew testFullDebugUnitTest   # pure logic, Robolectric (Room, backup, smart repository) and Compose UI tests
 ./gradlew assembleFullDebug       # app/build/outputs/apk/full/debug/app-full-debug.apk
 ./gradlew assembleLiteRelease     # app/build/outputs/apk/lite/release/app-lite-release.apk
 ```

@@ -103,6 +103,8 @@ jobs:
             - Insights from simple on-device rules, goal days without streak guilt
             - Soft locks: breathe-before-opening pause, daily limits, focus hours
             - Category limits: one shared daily limit for Social, Video, Games and more (Full edition)
+            - Smart nudges: the real cost of your time, "was it worth it?" ratings, weak-spot heads-ups, goals that taper, and a Sunday review
+            - Live check-ins (Full edition): "what are you here for?", drift, binge and scroll-loop check-ins, in a Gentle, Honest or Tough love tone
             - JSON backup export / restore, delete everything
 
             **First run:** grant Usage access. For locks, turn on *Gromp locks* in Accessibility settings. On Xiaomi, Oppo, Vivo, Realme and Samsung, allow background activity / Autostart for Gromp.
