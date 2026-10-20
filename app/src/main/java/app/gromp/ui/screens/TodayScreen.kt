@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -120,13 +121,29 @@ private fun Hero(d: TodayData) {
                 accent = if (over) G.Amber else G.Sage,
                 description = "${Fmt.duration(d.totalMs)} of a ${Fmt.duration(d.goalMs)} daily limit used",
             )
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            // Everything inside the ring stays within its 160dp inner area, however long the numbers get.
+            val total = Fmt.duration(d.totalMs)
+            Column(
+                Modifier.width(160.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
                 Kicker("Screen time")
-                Text(Fmt.duration(d.totalMs), fontSize = 46.sp, fontWeight = FontWeight.ExtraBold, color = G.Text, letterSpacing = (-1.2).sp)
                 Text(
-                    if (over) "${Fmt.duration(d.totalMs - d.goalMs)} past your ${Fmt.duration(d.goalMs)} limit" else "of your ${Fmt.duration(d.goalMs)} limit",
-                    fontSize = 13.sp, color = G.Muted,
+                    total,
+                    fontSize = if (total.length <= 6) 46.sp else 38.sp,
+                    fontWeight = FontWeight.ExtraBold, color = G.Text, letterSpacing = (-1.2).sp,
+                    maxLines = 1, softWrap = false,
                 )
+                if (over) {
+                    Text(
+                        "${Fmt.duration(d.totalMs - d.goalMs)} over",
+                        fontSize = 13.sp, fontWeight = FontWeight.Bold, color = G.Amber, maxLines = 1,
+                    )
+                    Text("your ${Fmt.duration(d.goalMs)} limit", fontSize = 13.sp, color = G.Muted, maxLines = 1)
+                } else {
+                    Text("of your ${Fmt.duration(d.goalMs)} limit", fontSize = 13.sp, color = G.Muted, maxLines = 1)
+                }
             }
         }
         val usual = d.usualSoFarMs
