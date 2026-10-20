@@ -36,6 +36,20 @@ jobs:
             exit "$status"
           fi
 
+      - name: Test summary
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import glob, collections, xml.etree.ElementTree as ET
+          per = collections.Counter(); total = fails = skipped = 0
+          for f in glob.glob("app/build/test-results/**/*.xml", recursive=True):
+              r = ET.parse(f).getroot()
+              n = int(r.get("tests", 0)); total += n
+              fails += int(r.get("failures", 0)) + int(r.get("errors", 0)); skipped += int(r.get("skipped", 0))
+              per[r.get("name", "?").split(".")[-1]] += n
+          print(f"::notice::{total} tests, {fails} failed, {skipped} skipped: " + ", ".join(f"{k} {v}" for k, v in sorted(per.items())))
+          PY
+
       - name: Test report
         if: always()
         uses: actions/upload-artifact@v4
