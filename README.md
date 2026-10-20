@@ -18,6 +18,17 @@ A calm, fully offline Android app that shows you where your phone time goes, and
 | Settings | Daily limit, locks status, focus hours, locked apps, permissions, battery tips, export/restore backup, delete everything |
 | **Locks (v1.5)** | *Breathe before opening* (5-second pause), *daily limit* screen (hold 3 s for 5 more minutes), and *focus hours* (selected apps rest; hold 5 s to open for 5 minutes) |
 
+## Editions
+
+| | Lite | Full |
+| --- | --- | --- |
+| Today, Trends, App detail, Insights, backups | ✓ | ✓ |
+| Soft locks (pause, limits, focus hours) | | ✓ |
+| Notification counting | | ✓ |
+| Install from a phone browser | ✓ | Blocked in some regions* |
+
+\* Play Protect blocks browser- or chat-downloaded APKs that request Accessibility or notification-listener access in some regions, including India. Install Full from a computer with `adb install gromp-<version>-full.apk`, or through an app store.
+
 ## How it works
 
 ```
@@ -42,15 +53,16 @@ NotificationListenerService ──► per-app daily counts (content is never rea
 Requirements: JDK 17 and the Android SDK (API 36).
 
 ```bash
-./gradlew testDebugUnitTest   # parser, focus schedule and lock decision tests
-./gradlew assembleDebug       # app/build/outputs/apk/debug/app-debug.apk
+./gradlew testFullDebugUnitTest   # parser, focus schedule and lock decision tests
+./gradlew assembleFullDebug       # app/build/outputs/apk/full/debug/app-full-debug.apk
+./gradlew assembleLiteRelease     # app/build/outputs/apk/lite/release/app-lite-release.apk
 ```
 
 Every push to `main` runs the GitHub Actions workflow in `.github/workflows/android.yml`. It runs the tests, builds debug and release APKs, checks that the release APK has no `INTERNET` permission, and uploads both APKs as the `gromp-apk` artifact.
 
 **Releases:** bump `versionName` (and `versionCode`) in `app/build.gradle.kts` and push to `main`. The Release workflow builds the APK, tags `v<version>` and publishes it on the GitHub Releases page. If that version already has a release, nothing happens.
 
-The release build is signed with the debug key so CI produces an installable APK. Set up your own keystore before publishing.
+**Signing:** add these repository secrets so every release is signed with the same key and updates install over each other: `GROMP_KEYSTORE_BASE64` (the .jks file, base64-encoded), `GROMP_KEYSTORE_PASSWORD`, `GROMP_KEY_ALIAS`, `GROMP_KEY_PASSWORD`. Without them, CI signs with a throwaway debug key, so each release needs an uninstall before installing.
 
 ## First run on a phone
 

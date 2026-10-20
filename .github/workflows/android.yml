@@ -20,22 +20,25 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Unit tests
-        run: ./gradlew --no-daemon testDebugUnitTest
+        run: ./gradlew --no-daemon testFullDebugUnitTest
 
       - name: Build APKs
-        run: ./gradlew --no-daemon assembleDebug assembleRelease
+        run: ./gradlew --no-daemon assembleFullDebug assembleFullRelease assembleLiteRelease
 
-      - name: Verify no INTERNET permission
+      - name: Verify permissions
         run: |
           AAPT=$(ls $ANDROID_HOME/build-tools/*/aapt2 | tail -1)
-          if $AAPT dump permissions app/build/outputs/apk/release/app-release.apk | grep -q "android.permission.INTERNET"; then
-            echo "INTERNET permission found in release APK"; exit 1
+          for apk in app/build/outputs/apk/*/release/*.apk; do
+            if $AAPT dump permissions "$apk" | grep -q "android.permission.INTERNET"; then
+              echo "INTERNET permission found in $apk"; exit 1
+            fi
+          done
+          LITE=$(ls app/build/outputs/apk/lite/release/*.apk)
+          if $AAPT dump xmltree --file AndroidManifest.xml "$LITE" | grep -qE "BIND_ACCESSIBILITY_SERVICE|BIND_NOTIFICATION_LISTENER_SERVICE"; then
+            echo "Lite APK must not declare accessibility or notification-listener services"; exit 1
           fi
-          $AAPT dump permissions app/build/outputs/apk/release/app-release.apk
 
       - uses: actions/upload-artifact@v4
         with:
           name: gromp-apk
-          path: |
-            app/build/outputs/apk/debug/app-debug.apk
-            app/build/outputs/apk/release/app-release.apk
+          path: app/build/outputs/apk/**/*.apk

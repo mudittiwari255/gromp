@@ -13,8 +13,22 @@ android {
         applicationId = "app.gromp"
         minSdk = 28
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.2.1"
+    }
+
+    // Release signing comes from environment variables (set from GitHub secrets in CI).
+    // Without them the release build falls back to the debug key.
+    val keystorePath: String? = System.getenv("GROMP_KEYSTORE")
+    signingConfigs {
+        if (keystorePath != null) {
+            create("release") {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("GROMP_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("GROMP_KEY_ALIAS")
+                keyPassword = System.getenv("GROMP_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
@@ -22,9 +36,7 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // Signed with the debug key so CI can produce an installable APK.
-            // Replace with your own release keystore before publishing.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
 
@@ -34,6 +46,24 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
+    }
+
+    // "full" has soft locks and notification counting. "lite" leaves out the accessibility and
+    // notification-listener services, so it installs from a browser even where Play Protect
+    // blocks sideloaded apps that request those permissions (e.g. its India fraud-protection pilot).
+    // Both share one applicationId, so moving from lite to full keeps your history.
+    flavorDimensions += "edition"
+    productFlavors {
+        create("full") {
+            dimension = "edition"
+            buildConfigField("boolean", "LOCKS", "true")
+        }
+        create("lite") {
+            dimension = "edition"
+            versionNameSuffix = "-lite"
+            buildConfigField("boolean", "LOCKS", "false")
+        }
     }
     lint {
         abortOnError = false

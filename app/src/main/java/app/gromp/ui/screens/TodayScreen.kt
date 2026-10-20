@@ -1,5 +1,6 @@
 package app.gromp.ui.screens
 
+import app.gromp.BuildConfig
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -178,7 +179,7 @@ private fun Kpis(d: TodayData) {
             "Notifications",
             d.notifications?.toString() ?: "—",
             when {
-                d.notifications == null -> "Turn on in Settings"
+                d.notifications == null -> if (BuildConfig.LOCKS) "Turn on in Settings" else "Full edition only"
                 d.topNotifPkg != null -> "${c.catalog.label(d.topNotifPkg)} sent ${d.topNotifCount}"
                 else -> "Quiet so far"
             },
@@ -276,7 +277,7 @@ fun InsightCard(i: Insight, onFocusHours: () -> Unit) {
         }
         Text(i.title, fontSize = 18.sp, lineHeight = 24.sp, fontWeight = FontWeight.Bold, color = G.Text)
         Text(i.body, fontSize = 14.sp, lineHeight = 21.sp, color = G.SageSoft)
-        if (i.suggestsFocus) {
+        if (i.suggestsFocus && BuildConfig.LOCKS) {
             Spacer(Modifier.height(2.dp))
             SmallPill("Set focus hours", onFocusHours, filled = true)
         }

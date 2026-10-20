@@ -1,5 +1,6 @@
 package app.gromp.ui.screens
 
+import app.gromp.BuildConfig
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -95,7 +96,7 @@ private fun InsightRow(i: Insight, onFocusHours: () -> Unit) {
                 Text(i.kicker.uppercase(), fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp, color = G.Muted)
                 Text(i.title, fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.ExtraBold, color = G.Text)
                 Text(i.body, fontSize = 13.sp, lineHeight = 19.sp, color = G.Muted)
-                if (i.suggestsFocus) SmallPill("Set focus hours", onFocusHours, filled = false)
+                if (i.suggestsFocus && BuildConfig.LOCKS) SmallPill("Set focus hours", onFocusHours, filled = false)
             }
         }
     }

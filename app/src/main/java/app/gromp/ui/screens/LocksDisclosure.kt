@@ -58,3 +58,17 @@ fun LocksOffBanner(onTurnOn: () -> Unit) {
         SmallPill("Turn on locks", onTurnOn, filled = true)
     }
 }
+
+/** Shown in the Lite edition where locks would otherwise be. */
+@Composable
+fun LiteEditionCard() {
+    GCard(spacing = 8.dp) {
+        Text("Lite edition", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = G.Text)
+        Text(
+            "Locks and notification counting need Accessibility and notification access, which Android blocks for apps " +
+                "installed from a browser in some regions. Install the Full edition over USB (adb) or from an app store to use them. " +
+                "Export a backup below before switching editions.",
+            fontSize = 13.sp, lineHeight = 19.sp, color = G.Muted,
+        )
+    }
+}

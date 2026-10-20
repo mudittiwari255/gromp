@@ -1,5 +1,6 @@
 package app.gromp.ui.screens
 
+import app.gromp.BuildConfig
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -151,9 +152,10 @@ fun AppDetailScreen(pkg: String, onBack: () -> Unit, onFocusHours: () -> Unit) {
                 }
             }
 
-            if (!lockOn && data.rule != null) LocksOffBanner { showDisclosure = true }
+            if (!BuildConfig.LOCKS) LiteEditionCard()
+            if (BuildConfig.LOCKS && !lockOn && data.rule != null) LocksOffBanner { showDisclosure = true }
 
-            GCard(padding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp, vertical = 8.dp), spacing = 0.dp) {
+            if (BuildConfig.LOCKS) GCard(padding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp, vertical = 8.dp), spacing = 0.dp) {
                 ListRow(
                     title = "Daily limit",
                     subtitle = "A gentle nudge, not a lock",

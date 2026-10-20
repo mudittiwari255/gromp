@@ -1,5 +1,6 @@
 package app.gromp.ui.screens
 
+import app.gromp.BuildConfig
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -93,7 +94,7 @@ fun SettingsScreen(onOpenApp: (String) -> Unit, onAddLock: () -> Unit, onFocusHo
                 )
             }
 
-            Section("Locks") {
+            if (!BuildConfig.LOCKS) LiteEditionCard() else Section("Locks") {
                 val on = status?.third ?: false
                 ListRow(
                     title = if (on) "Locks are on" else "Locks are off",
@@ -136,9 +137,11 @@ fun SettingsScreen(onOpenApp: (String) -> Unit, onAddLock: () -> Unit, onFocusHo
 
             Section("Permissions") {
                 PermRow("Usage access", "Counts app time. Required.", status?.first) { context.startActivity(Permissions.usageAccessIntent(context)) }
-                Divider()
-                PermRow("Notification counting", "Counts notifications per app. Never reads them.", status?.second) {
-                    context.startActivity(Permissions.notificationAccessIntent())
+                if (BuildConfig.LOCKS) {
+                    Divider()
+                    PermRow("Notification counting", "Counts notifications per app. Never reads them.", status?.second) {
+                        context.startActivity(Permissions.notificationAccessIntent())
+                    }
                 }
                 Divider()
                 ListRow(

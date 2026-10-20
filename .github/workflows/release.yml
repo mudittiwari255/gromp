@@ -39,22 +39,41 @@ jobs:
 
       - name: Test and build
         if: steps.v.outputs.skip != 'true'
-        run: ./gradlew --no-daemon testDebugUnitTest assembleRelease
+        env:
+          KEYSTORE_B64: ${{ secrets.GROMP_KEYSTORE_BASE64 }}
+          GROMP_KEYSTORE_PASSWORD: ${{ secrets.GROMP_KEYSTORE_PASSWORD }}
+          GROMP_KEY_ALIAS: ${{ secrets.GROMP_KEY_ALIAS }}
+          GROMP_KEY_PASSWORD: ${{ secrets.GROMP_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/gromp.jks"
+            export GROMP_KEYSTORE="$RUNNER_TEMP/gromp.jks"
+          else
+            echo "::warning::No signing secrets set; release APKs use a throwaway debug key."
+          fi
+          ./gradlew --no-daemon testFullDebugUnitTest assembleFullRelease assembleLiteRelease
 
-      - name: Verify no INTERNET permission
+      - name: Verify permissions
         if: steps.v.outputs.skip != 'true'
         run: |
           AAPT=$(ls $ANDROID_HOME/build-tools/*/aapt2 | tail -1)
-          if $AAPT dump permissions app/build/outputs/apk/release/app-release.apk | grep -q "android.permission.INTERNET"; then
-            echo "INTERNET permission found in release APK"; exit 1
+          for apk in app/build/outputs/apk/*/release/*.apk; do
+            if $AAPT dump permissions "$apk" | grep -q "android.permission.INTERNET"; then
+              echo "INTERNET permission found in $apk"; exit 1
+            fi
+          done
+          LITE=$(ls app/build/outputs/apk/lite/release/*.apk)
+          if $AAPT dump xmltree --file AndroidManifest.xml "$LITE" | grep -qE "BIND_ACCESSIBILITY_SERVICE|BIND_NOTIFICATION_LISTENER_SERVICE"; then
+            echo "Lite APK must not declare accessibility or notification-listener services"; exit 1
           fi
 
       - name: Name the APK
         if: steps.v.outputs.skip != 'true'
         run: |
           VERSION=${{ steps.v.outputs.version }}
-          cp app/build/outputs/apk/release/app-release.apk "gromp-$VERSION.apk"
-          sha256sum "gromp-$VERSION.apk" > "gromp-$VERSION.apk.sha256"
+          cp app/build/outputs/apk/full/release/app-full-release.apk "gromp-$VERSION-full.apk"
+          cp app/build/outputs/apk/lite/release/app-lite-release.apk "gromp-$VERSION-lite.apk"
+          sha256sum gromp-$VERSION-*.apk > "gromp-$VERSION.sha256"
 
       - uses: softprops/action-gh-release@v2
         if: steps.v.outputs.skip != 'true'
@@ -64,11 +83,13 @@ jobs:
           name: Gromp ${{ steps.v.outputs.version }}
           files: |
             gromp-*.apk
-            gromp-*.apk.sha256
+            gromp-*.sha256
           body: |
             Fully offline. No internet permission, no account, no analytics.
 
-            **Install:** download `gromp-*.apk` on your Android phone (Android 9 or newer), open it and allow installing from this source.
+            **Which APK?** (Android 9 or newer)
+            - `gromp-*-lite.apk`: dashboard, trends and insights. Installs straight from your phone's browser.
+            - `gromp-*-full.apk`: adds soft locks and notification counting. These need Accessibility and notification access, which Play Protect blocks for browser-downloaded apps in some regions (including India). Install it from a computer with `adb install gromp-*-full.apk`.
 
             **In this release**
             - Today dashboard: screen time vs your limit, pace vs your usual day, pickups, first pickup, longest session, notifications, hour-by-hour chart, top apps
@@ -80,4 +101,4 @@ jobs:
 
             **First run:** grant Usage access. For locks, turn on *Gromp locks* in Accessibility settings. On Xiaomi, Oppo, Vivo, Realme and Samsung, allow background activity / Autostart for Gromp.
 
-            Note: this APK is signed with a development key. A future build signed with a release key will need a fresh install.
+            Export a backup in Settings before switching editions or reinstalling.
