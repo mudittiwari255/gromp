@@ -1,6 +1,9 @@
 package app.gromp.data
 
 import app.gromp.data.db.AppDay
+import app.gromp.data.db.AppHour
+import app.gromp.data.db.NudgeEvent
+import app.gromp.data.db.SessionRating
 import app.gromp.data.db.CategoryRule
 import app.gromp.data.db.DaySummary
 import app.gromp.data.db.GrompDao
@@ -20,7 +23,7 @@ class Backup(private val dao: GrompDao, private val prefs: Prefs) {
     suspend fun export(out: OutputStream) = withContext(Dispatchers.IO) {
         val root = JSONObject()
         root.put("format", "gromp-backup")
-        root.put("version", 1)
+        root.put("version", 2)
         root.put("exportedAt", System.currentTimeMillis())
         root.put("dailyGoalMin", prefs.dailyGoalMin.value)
         prefs.focus.value.let {
@@ -56,6 +59,21 @@ class Backup(private val dao: GrompDao, private val prefs: Prefs) {
         root.put("categoryRules", JSONArray().apply {
             dao.categoryRules().forEach { put(JSONObject().put("category", it.category).put("limit", it.dailyLimitMin)) }
         })
+        root.put("appHours", JSONArray().apply {
+            dao.allAppHours().forEach { put(JSONObject().put("day", it.day).put("pkg", it.pkg).put("hour", it.hour).put("ms", it.ms)) }
+        })
+        root.put("ratings", JSONArray().apply {
+            dao.allRatings().forEach {
+                put(JSONObject().put("pkg", it.pkg).put("start", it.start).put("end", it.end).put("day", it.day)
+                    .put("worth", it.worth).put("ratedAt", it.ratedAt))
+            }
+        })
+        root.put("events", JSONArray().apply {
+            dao.allEvents().forEach {
+                put(JSONObject().put("at", it.at).put("day", it.day).put("pkg", it.pkg).put("kind", it.kind)
+                    .put("detail", it.detail ?: JSONObject.NULL).put("outcome", it.outcome ?: JSONObject.NULL))
+            }
+        })
         out.bufferedWriter().use { it.write(root.toString()) }
     }
 
@@ -86,7 +104,17 @@ class Backup(private val dao: GrompDao, private val prefs: Prefs) {
         val categoryRules = root.optJSONArray("categoryRules")?.objects().orEmpty().map {
             CategoryRule(it.getString("category"), it.getInt("limit"))
         }
-        dao.restore(summaries, apps, hours, notifs, rules, categoryRules)
+        val appHours = root.optJSONArray("appHours")?.objects().orEmpty().map {
+            AppHour(it.getString("day"), it.getString("pkg"), it.getInt("hour"), it.getLong("ms"))
+        }
+        val ratings = root.optJSONArray("ratings")?.objects().orEmpty().map {
+            SessionRating(it.getString("pkg"), it.getLong("start"), it.getLong("end"), it.getString("day"), it.getBoolean("worth"), it.getLong("ratedAt"))
+        }
+        val events = root.optJSONArray("events")?.objects().orEmpty().map {
+            NudgeEvent(at = it.getLong("at"), day = it.getString("day"), pkg = it.getString("pkg"), kind = it.getString("kind"),
+                detail = it.optStringOrNull("detail"), outcome = it.optStringOrNull("outcome"))
+        }
+        dao.restore(summaries, apps, hours, notifs, rules, categoryRules, appHours, ratings, events)
         prefs.setDailyGoal(root.optInt("dailyGoalMin", 240))
         root.optJSONObject("focus")?.let {
             prefs.setFocus(FocusSchedule(it.getBoolean("enabled"), it.getInt("start"), it.getInt("end"), it.getInt("days")))

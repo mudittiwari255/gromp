@@ -23,6 +23,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,9 +58,14 @@ import app.gromp.util.Fmt
 import kotlin.math.abs
 
 @Composable
-fun TodayScreen(onOpenApp: (String) -> Unit, onSeeTrends: () -> Unit, onFocusHours: () -> Unit) {
+fun TodayScreen(onOpenApp: (String) -> Unit, onSeeTrends: () -> Unit, onFocusHours: () -> Unit, onSmartSettings: () -> Unit) {
     val c = LocalContainer.current
-    val data = rememberLoaded { c.repository.loadToday() }
+    val scope = rememberCoroutineScope()
+    var version by remember { mutableIntStateOf(0) }
+    val data = rememberLoaded(version) { c.repository.loadToday() }
+    val smart = rememberLoaded(version, data?.totalMs) { data?.let { c.smart.today(it.totalMs) } }
+    val canNotify = rememberLoaded(version) { c.notifier.canPost() } ?: true
+    val smartSettings by c.prefs.smart.collectAsState()
     Column(
         Modifier
             .fillMaxSize()
@@ -68,6 +80,18 @@ fun TodayScreen(onOpenApp: (String) -> Unit, onSeeTrends: () -> Unit, onFocusHou
         Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Spacer(Modifier.height(4.dp))
             Hero(data)
+            smart?.taperLine?.let { TaperBanner(it) }
+            if (smart != null && data.totalMs >= 30 * 60_000L) RealCostCard(smart, onSmartSettings)
+            if (smart != null && smart.toRate.isNotEmpty()) {
+                WorthCard(smart.toRate, c.catalog::label) { s, worth ->
+                    scope.launch {
+                        c.smart.rate(s.pkg, s.start, s.end, worth)
+                        version++
+                    }
+                }
+            }
+            val wantsNotifications = smartSettings.worthPrompts || smartSettings.headsUps || smartSettings.weeklyReview
+            if (!canNotify && wantsNotifications) NotificationsCard { version++ }
             Kpis(data)
             HourCard(data)
             if (data.apps.isNotEmpty()) TopApps(data, onOpenApp, onSeeTrends)

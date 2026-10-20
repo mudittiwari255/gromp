@@ -2,6 +2,7 @@ package app.gromp.data
 
 import android.content.Context
 import app.gromp.data.db.AppDay
+import app.gromp.data.db.AppHour
 import app.gromp.data.db.CategoryRule
 import app.gromp.data.db.DaySummary
 import app.gromp.data.db.GrompDao
@@ -156,6 +157,9 @@ class Repository(
             ),
             s.apps.map { AppDay(k, it.pkg, it.ms, it.opens, it.longestMs, it.under1, it.m1to5, it.m5to15, it.over15) },
             s.hours.mapIndexed { h, ms -> HourUsage(k, h, ms) }.filter { it.ms > 0 },
+            Aggregator.byAppHour(s.parsed.sessions, startOf(s.day)).flatMap { (pkg, hours) ->
+                hours.mapIndexed { h, ms -> AppHour(k, pkg, h, ms) }.filter { it.ms > 0 }
+            },
         )
     }
 

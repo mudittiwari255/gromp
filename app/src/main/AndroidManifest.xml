@@ -11,6 +11,9 @@
         android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
 
+    <!-- Worth-it questions, weak-spot heads-ups and the Sunday review. Asked for in Settings. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <!-- See which launchable apps exist, for names and icons. -->
     <queries>
         <intent>
@@ -54,5 +57,8 @@
             android:taskAffinity="app.gromp.lock"
             android:theme="@style/Theme.Gromp" />
 
+        <receiver
+            android:name=".data.RatingReceiver"
+            android:exported="false" />
     </application>
 </manifest>

@@ -68,3 +68,38 @@ data class CategoryRule(
     @PrimaryKey val category: String,
     val dailyLimitMin: Int,
 )
+
+/** One app's time in one hour of one day. Feeds weak-spot detection. */
+@Entity(tableName = "app_hour", primaryKeys = ["day", "pkg", "hour"])
+data class AppHour(
+    val day: String,
+    val pkg: String,
+    val hour: Int,
+    val ms: Long,
+)
+
+/** The user's answer to "was it worth it?" for one session, identified by app and start time. */
+@Entity(tableName = "session_rating", primaryKeys = ["pkg", "start"])
+data class SessionRating(
+    val pkg: String,
+    val start: Long,
+    val end: Long,
+    val day: String,
+    val worth: Boolean,
+    val ratedAt: Long,
+)
+
+/**
+ * Something Gromp did or asked: an intention given, a check-in shown (Drift, Binge, Loop), a heads-up,
+ * or a worth-it prompt. [outcome] is "closed", "continued" or null.
+ */
+@Entity(tableName = "nudge_event")
+data class NudgeEvent(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val at: Long,
+    val day: String,
+    val pkg: String,
+    val kind: String,
+    val detail: String? = null,
+    val outcome: String? = null,
+)

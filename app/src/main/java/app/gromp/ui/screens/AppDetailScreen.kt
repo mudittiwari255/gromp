@@ -70,6 +70,7 @@ fun AppDetailScreen(pkg: String, onBack: () -> Unit, onFocusHours: () -> Unit) {
     var showDisclosure by remember { mutableStateOf(false) }
     val label = remember(pkg) { c.catalog.label(pkg) }
     val categoryRules by remember { c.repository.categoryRulesFlow() }.collectAsState(initial = emptyList())
+    val worth = rememberLoaded(pkg, version) { c.smart.worthScores().firstOrNull { it.pkg == pkg } }
 
     fun save(rule: LockRule) {
         scope.launch {
@@ -109,6 +110,12 @@ fun AppDetailScreen(pkg: String, onBack: () -> Unit, onFocusHours: () -> Unit) {
                     Kicker("Today")
                     Text(Fmt.duration(data.todayMs), fontSize = 44.sp, fontWeight = FontWeight.ExtraBold, color = G.Text, letterSpacing = (-1.2).sp)
                     TrendLine(data.usualMs?.let { data.todayMs - it }, suffix = "than your daily average")
+                    worth?.let { w ->
+                        Text(
+                            app.gromp.smart.Worth.scoreLine(w, label, c.prefs.smart.value.voice),
+                            fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = if (w.pct >= 50) G.Sage else G.Amber,
+                        )
+                    }
                 }
                 Box(Modifier.fillMaxWidth().height(1.dp).background(G.Line))
                 Row(Modifier.fillMaxWidth()) {

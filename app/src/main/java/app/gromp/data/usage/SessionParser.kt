@@ -124,4 +124,8 @@ object Aggregator {
         }
         return out
     }
+
+    /** Per-app hourly split: pkg → 24 buckets of milliseconds. */
+    fun byAppHour(sessions: List<Session>, dayStart: Long): Map<String, LongArray> =
+        sessions.groupBy { it.pkg }.mapValues { (_, list) -> byHour(list, dayStart) }
 }

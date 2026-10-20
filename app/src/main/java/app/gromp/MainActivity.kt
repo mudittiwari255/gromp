@@ -1,6 +1,10 @@
 package app.gromp
 
+import android.content.Intent
 import android.os.Bundle
+import app.gromp.data.Notifier
+import app.gromp.ui.screens.ReviewScreen
+import app.gromp.ui.screens.SmartSettingsScreen
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -46,16 +50,25 @@ import app.gromp.ui.theme.GrompTheme
 import app.gromp.util.Permissions
 
 class MainActivity : ComponentActivity() {
+    /** Where a notification asked to go ("review", "focus", "today"). */
+    private var openRequest by mutableStateOf<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        openRequest = intent?.getStringExtra(Notifier.EXTRA_OPEN)
         setContent {
             GrompTheme {
                 CompositionLocalProvider(LocalContainer provides container) {
-                    GrompRoot()
+                    GrompRoot(openRequest) { openRequest = null }
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        intent.getStringExtra(Notifier.EXTRA_OPEN)?.let { openRequest = it }
     }
 }
 
@@ -64,13 +77,15 @@ private object Routes {
     const val APP = "app/{pkg}"
     const val FOCUS = "focus"
     const val CATEGORIES = "categories"
+    const val REVIEW = "review"
+    const val SMART = "smart"
     const val PICK = "pick?focus={focus}"
     fun app(pkg: String) = "app/$pkg"
     fun pick(focus: Boolean) = "pick?focus=$focus"
 }
 
 @Composable
-private fun GrompRoot() {
+private fun GrompRoot(openRequest: String?, onOpened: () -> Unit) {
     val context = LocalContext.current
     val c = LocalContainer.current
     var hasAccess by remember { mutableStateOf(Permissions.hasUsageAccess(context)) }
@@ -90,6 +105,18 @@ private fun GrompRoot() {
     val route = entry?.destination?.route
     val start = remember { if (c.prefs.onboarded && hasAccess) Tab.Today.route else Routes.ONBOARDING }
 
+    // Coming from a notification: jump to the right screen once the app is set up.
+    LaunchedEffect(openRequest, hasAccess) {
+        val where = openRequest ?: return@LaunchedEffect
+        if (!hasAccess || !c.prefs.onboarded) return@LaunchedEffect
+        when (where) {
+            Notifier.Open.REVIEW -> nav.navigate(Routes.REVIEW)
+            Notifier.Open.FOCUS -> nav.navigate(Routes.FOCUS)
+            else -> nav.switchTab(Tab.Today)
+        }
+        onOpened()
+    }
+
     Column(Modifier.fillMaxSize().background(G.Bg)) {
         Box(Modifier.weight(1f).fillMaxWidth()) {
             NavHost(nav, startDestination = start) {
@@ -104,16 +131,18 @@ private fun GrompRoot() {
                         onOpenApp = { nav.navigate(Routes.app(it)) },
                         onSeeTrends = { nav.switchTab(Tab.Trends) },
                         onFocusHours = { nav.navigate(Routes.FOCUS) },
+                        onSmartSettings = { nav.navigate(Routes.SMART) },
                     )
                 }
                 composable(Tab.Trends.route) { TrendsScreen() }
-                composable(Tab.Insights.route) { InsightsScreen(onFocusHours = { nav.navigate(Routes.FOCUS) }) }
+                composable(Tab.Insights.route) { InsightsScreen(onFocusHours = { nav.navigate(Routes.FOCUS) }, onReview = { nav.navigate(Routes.REVIEW) }) }
                 composable(Tab.Settings.route) {
                     SettingsScreen(
                         onOpenApp = { nav.navigate(Routes.app(it)) },
                         onAddLock = { nav.navigate(Routes.pick(false)) },
                         onFocusHours = { nav.navigate(Routes.FOCUS) },
                         onCategoryLimits = { nav.navigate(Routes.CATEGORIES) },
+                        onSmartSettings = { nav.navigate(Routes.SMART) },
                         onWiped = { nav.switchTab(Tab.Today) },
                     )
                 }
@@ -124,6 +153,10 @@ private fun GrompRoot() {
                         onFocusHours = { nav.navigate(Routes.FOCUS) },
                     )
                 }
+                composable(Routes.REVIEW) {
+                    ReviewScreen(onBack = { nav.popBackStack() }, onFocusHours = { nav.navigate(Routes.FOCUS) })
+                }
+                composable(Routes.SMART) { SmartSettingsScreen(onBack = { nav.popBackStack() }) }
                 composable(Routes.CATEGORIES) { CategoryLimitsScreen(onBack = { nav.popBackStack() }) }
                 composable(Routes.FOCUS) {
                     FocusHoursScreen(onBack = { nav.popBackStack() }, onChooseApps = { nav.navigate(Routes.pick(true)) })

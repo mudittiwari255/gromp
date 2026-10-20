@@ -56,6 +56,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gromp.data.Category
+import app.gromp.smart.Copy
+import app.gromp.smart.Cost
+import app.gromp.smart.IntentKind
+import app.gromp.smart.Trade
+import app.gromp.smart.Voice
 import app.gromp.ui.components.PrimaryButton
 import app.gromp.ui.theme.G
 import app.gromp.util.Fmt
@@ -68,8 +73,13 @@ fun LockScreen(
     label: String,
     icon: ImageBitmap?,
     snoozesToday: Int,
+    voice: Voice = Voice.Honest,
+    trades: List<Trade> = emptyList(),
+    /** Today's time in this app, for cost lines. */
+    todayMs: Long = 0,
     onLeave: () -> Unit,
     onContinue: () -> Unit,
+    onIntention: (IntentKind) -> Unit = {},
 ) {
     Box(
         Modifier
@@ -79,9 +89,28 @@ fun LockScreen(
             .padding(horizontal = 24.dp, vertical = 28.dp),
     ) {
         when (request.mode) {
-            LockMode.Pause -> PauseContent(label, icon, onLeave, onContinue)
-            LockMode.Limit -> LimitContent(request, label, icon, snoozesToday, onLeave, onContinue)
+            LockMode.Pause -> PauseContent(
+                label, icon, onLeave, onContinue,
+                cost = if (voice == Voice.Tough && todayMs >= 10 * 60_000L) Cost.todayLine(todayMs, trades, voice, app = label) else null,
+            )
+            LockMode.Limit -> LimitContent(
+                request, label, icon, snoozesToday, onLeave, onContinue,
+                cost = Cost.todayLine(request.usedMs, trades, voice, app = request.category?.let { categoryName(it).lowercase() + " apps" } ?: label),
+            )
             LockMode.Focus -> FocusContent(request, label, icon, onLeave, onContinue)
+            LockMode.Intention -> IntentionContent(label, icon, voice, trades, todayMs, onLeave, onIntention)
+            LockMode.Drift -> {
+                val c = Copy.drift(label, request.intent ?: IntentKind.Bored, request.minutes, voice)
+                CheckInContent(label, icon, c, CheckInArt.Compass, "${request.minutes}m", onLeave, onContinue)
+            }
+            LockMode.Binge -> {
+                val c = Copy.binge(label, request.minutes, request.cost, voice)
+                CheckInContent(label, icon, c, CheckInArt.Ring, "${request.minutes}m", onLeave, onContinue)
+            }
+            LockMode.Loop -> {
+                val c = Copy.loop(request.loopApps, request.loopSpanMs, voice)
+                CheckInContent(label, icon, c, CheckInArt.Loop, "${request.loopApps}", onLeave, onContinue)
+            }
         }
     }
 }
@@ -99,7 +128,7 @@ private fun AppBadge(label: String, icon: ImageBitmap?) {
 // ---------------- Pause ----------------
 
 @Composable
-private fun PauseContent(label: String, icon: ImageBitmap?, onLeave: () -> Unit, onContinue: () -> Unit) {
+private fun PauseContent(label: String, icon: ImageBitmap?, onLeave: () -> Unit, onContinue: () -> Unit, cost: String? = null) {
     var secondsLeft by remember { mutableIntStateOf(5) }
     LaunchedEffect(Unit) {
         while (secondsLeft > 0) { delay(1_000); secondsLeft-- }
@@ -130,6 +159,10 @@ private fun PauseContent(label: String, icon: ImageBitmap?, onLeave: () -> Unit,
             if (secondsLeft > 0) "Take one slow breath. $secondsLeft…" else "No pressure either way. You chose to pause here.",
             fontSize = 15.sp, color = G.Muted, textAlign = TextAlign.Center,
         )
+        if (cost != null && secondsLeft == 0) {
+            Spacer(Modifier.height(12.dp))
+            Text(cost, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = G.Amber, textAlign = TextAlign.Center)
+        }
         Spacer(Modifier.weight(1f))
         AnimatedVisibility(visible = secondsLeft == 0, enter = fadeIn(tween(400))) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -146,6 +179,7 @@ private fun PauseContent(label: String, icon: ImageBitmap?, onLeave: () -> Unit,
 @Composable
 private fun LimitContent(
     r: LockRequest, label: String, icon: ImageBitmap?, snoozes: Int, onLeave: () -> Unit, onContinue: () -> Unit,
+    cost: String? = null,
 ) {
     Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
         AppBadge(label, icon)
@@ -162,7 +196,7 @@ private fun LimitContent(
             }
         }
         Spacer(Modifier.height(32.dp))
-        val catLabel = r.category?.let { name -> runCatching { Category.valueOf(name).label }.getOrDefault(name) }
+        val catLabel = r.category?.let { categoryName(it) }
         Text(
             if (catLabel != null) "That's today's ${catLabel.lowercase()} time." else "That's today's $label time.",
             fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = G.Text, textAlign = TextAlign.Center,
@@ -177,6 +211,10 @@ private fun LimitContent(
             },
             fontSize = 15.sp, color = G.Muted, textAlign = TextAlign.Center,
         )
+        if (cost != null) {
+            Spacer(Modifier.height(12.dp))
+            Text(cost, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = G.Amber, textAlign = TextAlign.Center)
+        }
         Spacer(Modifier.weight(1f))
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             PrimaryButton("I'm done for today", onLeave, Modifier.fillMaxWidth())
@@ -208,6 +246,76 @@ private fun FocusContent(r: LockRequest, label: String, icon: ImageBitmap?, onLe
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             PrimaryButton("Okay, close it", onLeave, Modifier.fillMaxWidth())
             HoldButton("Hold to open for 5 minutes", holdMs = 5_000, onComplete = onContinue)
+        }
+    }
+}
+
+private fun categoryName(name: String): String = runCatching { Category.valueOf(name).label }.getOrDefault(name)
+
+// ---------------- Intention ----------------
+
+@Composable
+private fun IntentionContent(
+    label: String, icon: ImageBitmap?, voice: Voice, trades: List<Trade>, todayMs: Long,
+    onLeave: () -> Unit, onPick: (IntentKind) -> Unit,
+) {
+    val copy = Copy.intention(label, voice)
+    Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+        AppBadge(label, icon)
+        Spacer(Modifier.weight(1f))
+        Text(copy.title, fontSize = 26.sp, lineHeight = 32.sp, fontWeight = FontWeight.ExtraBold, color = G.Text, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(8.dp))
+        Text(copy.body, fontSize = 15.sp, color = G.Muted, textAlign = TextAlign.Center)
+        if (voice == Voice.Tough && todayMs >= 10 * 60_000L) {
+            Spacer(Modifier.height(12.dp))
+            Text(Cost.todayLine(todayMs, trades, voice, app = label), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = G.Amber, textAlign = TextAlign.Center)
+        }
+        Spacer(Modifier.height(28.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            IntentKind.entries.forEach { k -> QuietButton(k.label, { onPick(k) }) }
+        }
+        Spacer(Modifier.weight(1f))
+        PrimaryButton(copy.leave, onLeave, Modifier.fillMaxWidth())
+    }
+}
+
+// ---------------- Drift, binge, loop ----------------
+
+private enum class CheckInArt { Ring, Compass, Loop }
+
+@Composable
+private fun CheckInContent(
+    label: String, icon: ImageBitmap?, copy: Copy.CheckIn, art: CheckInArt, figure: String,
+    onLeave: () -> Unit, onStay: () -> Unit,
+) {
+    Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+        AppBadge(label, icon)
+        Spacer(Modifier.weight(1f))
+        Box(Modifier.size(200.dp), contentAlignment = Alignment.Center) {
+            Canvas(Modifier.size(200.dp)) {
+                val stroke = 12.dp.toPx()
+                when (art) {
+                    CheckInArt.Ring -> drawCircle(G.Amber, radius = size.minDimension / 2 - stroke, style = Stroke(stroke))
+                    CheckInArt.Compass -> {
+                        drawCircle(G.Blue, radius = size.minDimension / 2 - stroke, style = Stroke(stroke / 2))
+                        drawLine(G.Blue, Offset(size.width / 2, size.height * 0.28f), Offset(size.width / 2, size.height * 0.72f), stroke / 2, StrokeCap.Round)
+                    }
+                    CheckInArt.Loop -> {
+                        val r = size.minDimension / 2 - stroke
+                        drawArc(G.Lilac, 20f, 300f, false, Offset(stroke, stroke), Size(r * 2, r * 2), style = Stroke(stroke, cap = StrokeCap.Round))
+                    }
+                }
+            }
+            Text(figure, fontSize = 40.sp, fontWeight = FontWeight.ExtraBold, color = G.Text)
+        }
+        Spacer(Modifier.height(28.dp))
+        Text(copy.title, fontSize = 24.sp, lineHeight = 30.sp, fontWeight = FontWeight.ExtraBold, color = G.Text, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(8.dp))
+        Text(copy.body, fontSize = 15.sp, lineHeight = 22.sp, color = G.Muted, textAlign = TextAlign.Center)
+        Spacer(Modifier.weight(1f))
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            PrimaryButton(copy.leave, onLeave, Modifier.fillMaxWidth())
+            QuietButton(copy.stay, onStay)
         }
     }
 }

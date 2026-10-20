@@ -57,6 +57,7 @@ fun SettingsScreen(
     onAddLock: () -> Unit,
     onFocusHours: () -> Unit,
     onCategoryLimits: () -> Unit,
+    onSmartSettings: () -> Unit,
     onWiped: () -> Unit,
 ) {
     val c = LocalContainer.current
@@ -91,6 +92,18 @@ fun SettingsScreen(
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding()) {
         Text("Settings", modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 8.dp), fontSize = 28.sp, fontWeight = FontWeight.Bold, color = G.Text)
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+
+            Section("Smart nudges") {
+                val sm = c.prefs.smart.collectAsState().value
+                ListRow(
+                    title = "Tone: ${sm.voice.label}",
+                    subtitle = if (sm.trades.isEmpty()) "Pick what you'd rather do, check-ins, worth-it questions, tapering goals"
+                    else "Rather be: " + sm.trades.joinToString(", ") { it.label.lowercase() },
+                    leading = { IconTile(GIcons.Insights) },
+                    onClick = onSmartSettings,
+                    trailing = { Icon(GIcons.Chevron, null, tint = G.Muted, modifier = Modifier.size(20.dp)) },
+                )
+            }
 
             Section("Your limit") {
                 ListRow(

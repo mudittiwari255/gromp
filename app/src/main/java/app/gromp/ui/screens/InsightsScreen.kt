@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,9 +44,12 @@ import app.gromp.ui.theme.G
 import app.gromp.util.Fmt
 
 @Composable
-fun InsightsScreen(onFocusHours: () -> Unit) {
+fun InsightsScreen(onFocusHours: () -> Unit, onReview: () -> Unit) {
     val c = LocalContainer.current
     val data = rememberLoaded { c.repository.loadInsights() }
+    val spots = rememberLoaded { c.smart.weakSpots() }.orEmpty()
+    val scores = rememberLoaded { c.smart.worthScores() }.orEmpty()
+    val voice = c.prefs.smart.collectAsState().value.voice
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding()) {
         Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("Insights", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = G.Text)
@@ -53,7 +57,10 @@ fun InsightsScreen(onFocusHours: () -> Unit) {
         }
         if (data == null) return@Column
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            ReviewTeaser(onReview)
             data.featured?.let { f -> Featured(f, data) }
+            if (spots.isNotEmpty()) WeakSpotsCard(spots, c.catalog::label, voice, if (BuildConfig.LOCKS) onFocusHours else null)
+            if (scores.isNotEmpty()) WorthScoresCard(scores, c.catalog::label, voice)
             data.cards.forEach { InsightRow(it, onFocusHours) }
             if (data.featured == null && data.cards.isEmpty()) {
                 GCard(spacing = 6.dp) {
