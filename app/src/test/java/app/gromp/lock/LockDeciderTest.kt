@@ -57,4 +57,30 @@ class LockDeciderTest {
         val r = LockRule("a", focusBlocked = true)
         assertEquals(Decision.Allow(LockDecider.RECHECK_MS), decide(r, focus = false))
     }
+
+    @Test
+    fun `category limit applies even without an app rule`() {
+        val cat = CategoryLimit("Social", 60, 61 * min)
+        assertEquals(Decision.Limit(60, 61 * min, "Social"), LockDecider.decide(null, 0, false, 420, GrantView(), now, true, cat))
+    }
+
+    @Test
+    fun `category limit rechecks when the shared time would run out`() {
+        val cat = CategoryLimit("Social", 60, 45 * min)
+        assertEquals(Decision.Allow(15 * min), LockDecider.decide(null, 0, false, 420, GrantView(), now, true, cat))
+    }
+
+    @Test
+    fun `snoozed category lets the app through and skips the pause`() {
+        val cat = CategoryLimit("Social", 60, 70 * min, snoozeUntil = now + 5 * min)
+        val r = LockRule("a", pauseEnabled = true)
+        assertEquals(Decision.Allow(5 * min), LockDecider.decide(r, 0, false, 420, GrantView(), now, true, cat))
+    }
+
+    @Test
+    fun `app's own limit is reported before the category limit`() {
+        val cat = CategoryLimit("Social", 60, 70 * min)
+        val r = LockRule("a", dailyLimitMin = 30)
+        assertEquals(Decision.Limit(30, 40 * min), LockDecider.decide(r, 40 * min, false, 420, GrantView(), now, true, cat))
+    }
 }

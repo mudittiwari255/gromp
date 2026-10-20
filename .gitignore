@@ -8,5 +8,6 @@
 /captures/
 .externalNativeBuild/
 .cxx/
-*.keystore
 *.jks
+*.keystore
+!signing/dev.keystore

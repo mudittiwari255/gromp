@@ -25,6 +25,7 @@ import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -68,6 +69,7 @@ fun AppDetailScreen(pkg: String, onBack: () -> Unit, onFocusHours: () -> Unit) {
     var showLimit by remember { mutableStateOf(false) }
     var showDisclosure by remember { mutableStateOf(false) }
     val label = remember(pkg) { c.catalog.label(pkg) }
+    val categoryRules by remember { c.repository.categoryRulesFlow() }.collectAsState(initial = emptyList())
 
     fun save(rule: LockRule) {
         scope.launch {
@@ -158,7 +160,9 @@ fun AppDetailScreen(pkg: String, onBack: () -> Unit, onFocusHours: () -> Unit) {
             if (BuildConfig.LOCKS) GCard(padding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp, vertical = 8.dp), spacing = 0.dp) {
                 ListRow(
                     title = "Daily limit",
-                    subtitle = "A gentle nudge, not a lock",
+                    subtitle = categoryRules.firstOrNull { it.category == data.category.name }?.let {
+                        "Also shares ${data.category.label}'s ${Fmt.duration(it.dailyLimitMin * 60_000L)} limit"
+                    } ?: "A gentle nudge, not a lock",
                     trailing = {
                         SecondaryButton(rule.dailyLimitMin?.let { "${Fmt.duration(it * 60_000L)} · Edit" } ?: "Set", { showLimit = true })
                     },
@@ -205,7 +209,7 @@ private fun Mini(modifier: Modifier, value: String, label: String) {
 }
 
 @Composable
-private fun LimitDialog(current: Int?, onDismiss: () -> Unit, onPick: (Int?) -> Unit) {
+fun LimitDialog(current: Int?, onDismiss: () -> Unit, onPick: (Int?) -> Unit) {
     val options = listOf<Int?>(15, 30, 45, 60, 90, 120, 180, null)
     var choice by remember { mutableStateOf(current) }
     AlertDialog(

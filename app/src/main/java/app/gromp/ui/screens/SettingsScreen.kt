@@ -52,7 +52,13 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 @Composable
-fun SettingsScreen(onOpenApp: (String) -> Unit, onAddLock: () -> Unit, onFocusHours: () -> Unit, onWiped: () -> Unit) {
+fun SettingsScreen(
+    onOpenApp: (String) -> Unit,
+    onAddLock: () -> Unit,
+    onFocusHours: () -> Unit,
+    onCategoryLimits: () -> Unit,
+    onWiped: () -> Unit,
+) {
     val c = LocalContainer.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -60,6 +66,7 @@ fun SettingsScreen(onOpenApp: (String) -> Unit, onAddLock: () -> Unit, onFocusHo
     val goal by c.prefs.dailyGoalMin.collectAsState()
     val focus by c.prefs.focus.collectAsState()
     val rules by remember { c.repository.rulesFlow() }.collectAsState(initial = emptyList())
+    val categoryRules by remember { c.repository.categoryRulesFlow() }.collectAsState(initial = emptyList())
     val status = rememberLoaded(refresh) {
         Triple(Permissions.hasUsageAccess(context), Permissions.hasNotificationAccess(context), Permissions.isLockServiceOn(context))
     }
@@ -110,6 +117,18 @@ fun SettingsScreen(onOpenApp: (String) -> Unit, onAddLock: () -> Unit, onFocusHo
                     else "Off",
                     leading = { IconTile(GIcons.Moon, G.Lilac, androidx.compose.ui.graphics.Color(0xFF241F2E)) },
                     onClick = onFocusHours,
+                    trailing = { Icon(GIcons.Chevron, null, tint = G.Muted, modifier = Modifier.size(20.dp)) },
+                )
+                Divider()
+                ListRow(
+                    title = "Category limits",
+                    subtitle = if (categoryRules.isEmpty()) "Share one daily limit across Social, Video, Games…"
+                    else categoryRules.joinToString(" · ") { r ->
+                        val name = runCatching { app.gromp.data.Category.valueOf(r.category).label }.getOrDefault(r.category)
+                        "$name ${Fmt.duration(r.dailyLimitMin * 60_000L)}"
+                    },
+                    leading = { IconTile(GIcons.Trends, G.Amber, androidx.compose.ui.graphics.Color(0xFF2B2418)) },
+                    onClick = onCategoryLimits,
                     trailing = { Icon(GIcons.Chevron, null, tint = G.Muted, modifier = Modifier.size(20.dp)) },
                 )
                 rules.filter { it.dailyLimitMin != null || it.pauseEnabled }.forEach { r ->

@@ -103,6 +103,23 @@ abstract class GrompDao {
     @Query("DELETE FROM lock_rule WHERE pkg = :pkg")
     abstract suspend fun deleteRule(pkg: String)
 
+    // ---- Category limits ----
+
+    @Query("SELECT * FROM category_rule")
+    abstract fun categoryRulesFlow(): Flow<List<CategoryRule>>
+
+    @Query("SELECT * FROM category_rule")
+    abstract suspend fun categoryRules(): List<CategoryRule>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    abstract suspend fun upsertCategoryRule(rule: CategoryRule)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    abstract suspend fun insertCategoryRules(rules: List<CategoryRule>)
+
+    @Query("DELETE FROM category_rule WHERE category = :category")
+    abstract suspend fun deleteCategoryRule(category: String)
+
     // ---- Wipe ----
 
     @Query("DELETE FROM day_summary") abstract suspend fun clearSummaries()
@@ -110,16 +127,17 @@ abstract class GrompDao {
     @Query("DELETE FROM hour_usage") abstract suspend fun clearHours()
     @Query("DELETE FROM notif_day") abstract suspend fun clearNotifs()
     @Query("DELETE FROM lock_rule") abstract suspend fun clearRules()
+    @Query("DELETE FROM category_rule") abstract suspend fun clearCategoryRules()
 
     @Transaction
     open suspend fun clearAll() {
-        clearSummaries(); clearAppDays(); clearHours(); clearNotifs(); clearRules()
+        clearSummaries(); clearAppDays(); clearHours(); clearNotifs(); clearRules(); clearCategoryRules()
     }
 
     @Transaction
     open suspend fun restore(
         summaries: List<DaySummary>, apps: List<AppDay>, hours: List<HourUsage>,
-        notifs: List<NotifDay>, rules: List<LockRule>,
+        notifs: List<NotifDay>, rules: List<LockRule>, categoryRules: List<CategoryRule> = emptyList(),
     ) {
         clearAll()
         summaries.forEach { upsertSummary(it) }
@@ -127,5 +145,6 @@ abstract class GrompDao {
         insertHours(hours)
         insertNotifs(notifs)
         insertRules(rules)
+        insertCategoryRules(categoryRules)
     }
 }

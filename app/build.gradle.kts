@@ -13,14 +13,21 @@ android {
         applicationId = "app.gromp"
         minSdk = 28
         targetSdk = 36
-        versionCode = 4
-        versionName = "0.2.2"
+        versionCode = 5
+        versionName = "0.3.0"
     }
 
-    // Release signing comes from environment variables (set from GitHub secrets in CI).
-    // Without them the release build falls back to the debug key.
+    // Release signing comes from environment variables (GitHub secrets in CI) when they're set.
+    // Otherwise every build uses the shared development key in signing/dev.keystore, so CI builds
+    // can be installed over each other. Swap in your own key (via the secrets) before distributing widely.
     val keystorePath: String? = System.getenv("GROMP_KEYSTORE")
     signingConfigs {
+        create("dev") {
+            storeFile = rootProject.file("signing/dev.keystore")
+            storePassword = "gromp-dev"
+            keyAlias = "gromp-dev"
+            keyPassword = "gromp-dev"
+        }
         if (keystorePath != null) {
             create("release") {
                 storeFile = file(keystorePath)
@@ -32,11 +39,14 @@ android {
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("dev")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("dev")
         }
     }
 

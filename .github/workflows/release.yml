@@ -49,12 +49,12 @@ jobs:
             echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/gromp.jks"
             export GROMP_KEYSTORE="$RUNNER_TEMP/gromp.jks"
           else
-            echo "::warning::No signing secrets set; release APKs use a throwaway debug key."
+            echo "::warning::No signing secrets set; release APKs use the shared development key."
           fi
-          ./gradlew --no-daemon --stacktrace testFullDebugUnitTest assembleFullRelease assembleLiteRelease 2>&1 | tee build.log
+          { ./gradlew --no-daemon testFullDebugUnitTest && ./gradlew --no-daemon --stacktrace assembleFullRelease assembleLiteRelease; } 2>&1 | tee build.log
           status=${PIPESTATUS[0]}
           if [ "$status" -ne 0 ]; then
-            grep -E "^e: |What went wrong|^> |error:|FAILED" build.log | head -30 | while IFS= read -r line; do echo "::error::$line"; done
+            grep -E -A3 "^e: |What went wrong|Caused by|OutOfMemory|Execution failed" build.log | grep -v "^--$" | head -40 | while IFS= read -r line; do echo "::error::$line"; done
             exit "$status"
           fi
 
@@ -102,6 +102,7 @@ jobs:
             - App detail with visit lengths and a 30-day trend
             - Insights from simple on-device rules, goal days without streak guilt
             - Soft locks: breathe-before-opening pause, daily limits, focus hours
+            - Category limits: one shared daily limit for Social, Video, Games and more (Full edition)
             - JSON backup export / restore, delete everything
 
             **First run:** grant Usage access. For locks, turn on *Gromp locks* in Accessibility settings. On Xiaomi, Oppo, Vivo, Realme and Samsung, allow background activity / Autostart for Gromp.

@@ -2,6 +2,7 @@ package app.gromp.data
 
 import android.content.Context
 import app.gromp.data.db.AppDay
+import app.gromp.data.db.CategoryRule
 import app.gromp.data.db.DaySummary
 import app.gromp.data.db.GrompDao
 import app.gromp.data.db.HourUsage
@@ -372,11 +373,30 @@ class Repository(
         else dao.upsertRule(rule)
     }
 
+    // ---------- Category limits ----------
+
+    fun categoryRulesFlow(): Flow<List<CategoryRule>> = dao.categoryRulesFlow()
+
+    suspend fun setCategoryLimit(category: Category, limitMin: Int?) {
+        if (limitMin == null) dao.deleteCategoryRule(category.name)
+        else dao.upsertCategoryRule(CategoryRule(category.name, limitMin))
+    }
+
+    /** Milliseconds spent today across every app in [category]. */
+    suspend fun todayMsForCategory(category: Category): Long =
+        todayLive(maxAgeMs = 10_000).apps.filter { catalog.category(it.pkg) == category }.sumOf { it.ms }
+
+    /** Today's time per category, with the apps that make it up, for the category limits screen. */
+    suspend fun categoryToday(): Map<Category, List<Pair<String, Long>>> = withContext(Dispatchers.IO) {
+        todayLive().apps.groupBy { catalog.category(it.pkg) }.mapValues { (_, list) -> list.map { it.pkg to it.ms } }
+    }
+
     suspend fun countNotification(pkg: String) {
         dao.countNotification(key(today()), pkg)
     }
 
     suspend fun wipe() {
+        dao.clearCategoryRules()
         dao.clearAll()
         prefs.clear()
         todayCache = null

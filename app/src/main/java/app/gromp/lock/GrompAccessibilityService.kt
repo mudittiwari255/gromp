@@ -21,6 +21,7 @@ import java.time.LocalDateTime
 class GrompAccessibilityService : AccessibilityService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     @Volatile private var rules: Map<String, LockRule> = emptyMap()
+    @Volatile private var categoryLimits: Map<String, Int> = emptyMap()
     private var ignored: Set<String> = emptySet()
     private var transient: Set<String> = TRANSIENT
     private var currentPkg: String? = null
@@ -32,6 +33,9 @@ class GrompAccessibilityService : AccessibilityService() {
         transient = TRANSIENT + c.catalog.keyboards()
         ignored = c.catalog.neverLock() + packageName - transient
         scope.launch { c.repository.rulesFlow().collectLatest { list -> rules = list.associateBy { it.pkg } } }
+        scope.launch {
+            c.repository.categoryRulesFlow().collectLatest { list -> categoryLimits = list.associate { it.category to it.dailyLimitMin } }
+        }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -53,9 +57,17 @@ class GrompAccessibilityService : AccessibilityService() {
     }
 
     private suspend fun evaluate(pkg: String, onOpen: Boolean) {
-        val rule = rules[pkg] ?: return
         val c = container
-        val used = if (rule.dailyLimitMin != null) runCatching { c.repository.todayMsFor(pkg) }.getOrDefault(0L) else 0L
+        val rule = rules[pkg]
+        val category = c.catalog.category(pkg)
+        val catLimitMin = categoryLimits[category.name]
+        if (rule == null && catLimitMin == null) return
+
+        val used = if (rule?.dailyLimitMin != null) runCatching { c.repository.todayMsFor(pkg) }.getOrDefault(0L) else 0L
+        val categoryLimit = catLimitMin?.let { limit ->
+            val catUsed = runCatching { c.repository.todayMsForCategory(category) }.getOrDefault(0L)
+            CategoryLimit(category.name, limit, catUsed, c.grants.categorySnoozeUntil(category.name))
+        }
 
         val focus = c.prefs.focus.value
         val now = LocalDateTime.now()
@@ -64,7 +76,7 @@ class GrompAccessibilityService : AccessibilityService() {
         val focusActive = focus.isActive(dow, now.hour * 60 + now.minute, prevDow)
 
         val decision = LockDecider.decide(
-            rule, used, focusActive, focus.endMinute, c.grants.view(pkg), System.currentTimeMillis(), onOpen,
+            rule, used, focusActive, focus.endMinute, c.grants.view(pkg), System.currentTimeMillis(), onOpen, categoryLimit,
         )
         if (currentPkg != pkg) return
 
@@ -76,7 +88,9 @@ class GrompAccessibilityService : AccessibilityService() {
                 }
             }
             Decision.Pause -> show(LockActivity.intent(this, pkg, LockMode.Pause))
-            is Decision.Limit -> show(LockActivity.intent(this, pkg, LockMode.Limit, limitMin = decision.limitMin, usedMs = decision.usedMs))
+            is Decision.Limit -> show(
+                LockActivity.intent(this, pkg, LockMode.Limit, limitMin = decision.limitMin, usedMs = decision.usedMs, category = decision.category),
+            )
             is Decision.Focus -> show(LockActivity.intent(this, pkg, LockMode.Focus, focusEnd = decision.endMinute))
         }
     }

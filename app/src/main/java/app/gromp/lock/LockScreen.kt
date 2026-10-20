@@ -55,6 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.gromp.data.Category
 import app.gromp.ui.components.PrimaryButton
 import app.gromp.ui.theme.G
 import app.gromp.util.Fmt
@@ -161,11 +162,19 @@ private fun LimitContent(
             }
         }
         Spacer(Modifier.height(32.dp))
-        Text("That's today's $label time.", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = G.Text, textAlign = TextAlign.Center)
+        val catLabel = r.category?.let { name -> runCatching { Category.valueOf(name).label }.getOrDefault(name) }
+        Text(
+            if (catLabel != null) "That's today's ${catLabel.lowercase()} time." else "That's today's $label time.",
+            fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = G.Text, textAlign = TextAlign.Center,
+        )
         Spacer(Modifier.height(8.dp))
         Text(
-            if (snoozes == 0) "You set this limit for a reason. Tomorrow starts fresh."
-            else "You've taken $snoozes extra ${if (snoozes == 1) "break" else "breaks"} today. That's okay, just notice it.",
+            when {
+                catLabel != null && snoozes == 0 ->
+                    "$label shares a ${Fmt.duration(r.limitMin * 60_000L)} daily limit with your other ${catLabel.lowercase()} apps. Tomorrow starts fresh."
+                snoozes == 0 -> "You set this limit for a reason. Tomorrow starts fresh."
+                else -> "You've taken $snoozes extra ${if (snoozes == 1) "break" else "breaks"} today. That's okay, just notice it."
+            },
             fontSize = 15.sp, color = G.Muted, textAlign = TextAlign.Center,
         )
         Spacer(Modifier.weight(1f))

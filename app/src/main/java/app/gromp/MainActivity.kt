@@ -34,6 +34,7 @@ import app.gromp.ui.components.LocalContainer
 import app.gromp.ui.components.Tab
 import app.gromp.ui.screens.AppDetailScreen
 import app.gromp.ui.screens.AppPickerScreen
+import app.gromp.ui.screens.CategoryLimitsScreen
 import app.gromp.ui.screens.FocusHoursScreen
 import app.gromp.ui.screens.InsightsScreen
 import app.gromp.ui.screens.OnboardingScreen
@@ -62,6 +63,7 @@ private object Routes {
     const val ONBOARDING = "onboarding"
     const val APP = "app/{pkg}"
     const val FOCUS = "focus"
+    const val CATEGORIES = "categories"
     const val PICK = "pick?focus={focus}"
     fun app(pkg: String) = "app/$pkg"
     fun pick(focus: Boolean) = "pick?focus=$focus"
@@ -111,6 +113,7 @@ private fun GrompRoot() {
                         onOpenApp = { nav.navigate(Routes.app(it)) },
                         onAddLock = { nav.navigate(Routes.pick(false)) },
                         onFocusHours = { nav.navigate(Routes.FOCUS) },
+                        onCategoryLimits = { nav.navigate(Routes.CATEGORIES) },
                         onWiped = { nav.switchTab(Tab.Today) },
                     )
                 }
@@ -121,6 +124,7 @@ private fun GrompRoot() {
                         onFocusHours = { nav.navigate(Routes.FOCUS) },
                     )
                 }
+                composable(Routes.CATEGORIES) { CategoryLimitsScreen(onBack = { nav.popBackStack() }) }
                 composable(Routes.FOCUS) {
                     FocusHoursScreen(onBack = { nav.popBackStack() }, onChooseApps = { nav.navigate(Routes.pick(true)) })
                 }

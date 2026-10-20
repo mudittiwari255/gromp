@@ -1,6 +1,7 @@
 package app.gromp.data
 
 import app.gromp.data.db.AppDay
+import app.gromp.data.db.CategoryRule
 import app.gromp.data.db.DaySummary
 import app.gromp.data.db.GrompDao
 import app.gromp.data.db.HourUsage
@@ -52,6 +53,9 @@ class Backup(private val dao: GrompDao, private val prefs: Prefs) {
                     .put("pause", it.pauseEnabled).put("focus", it.focusBlocked))
             }
         })
+        root.put("categoryRules", JSONArray().apply {
+            dao.categoryRules().forEach { put(JSONObject().put("category", it.category).put("limit", it.dailyLimitMin)) }
+        })
         out.bufferedWriter().use { it.write(root.toString()) }
     }
 
@@ -79,7 +83,10 @@ class Backup(private val dao: GrompDao, private val prefs: Prefs) {
         val rules = root.getJSONArray("rules").objects().map {
             LockRule(it.getString("pkg"), it.optIntOrNull("limit"), it.getBoolean("pause"), it.getBoolean("focus"))
         }
-        dao.restore(summaries, apps, hours, notifs, rules)
+        val categoryRules = root.optJSONArray("categoryRules")?.objects().orEmpty().map {
+            CategoryRule(it.getString("category"), it.getInt("limit"))
+        }
+        dao.restore(summaries, apps, hours, notifs, rules, categoryRules)
         prefs.setDailyGoal(root.optInt("dailyGoalMin", 240))
         root.optJSONObject("focus")?.let {
             prefs.setFocus(FocusSchedule(it.getBoolean("enabled"), it.getInt("start"), it.getInt("end"), it.getInt("days")))

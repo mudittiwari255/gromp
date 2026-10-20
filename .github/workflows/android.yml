@@ -27,7 +27,7 @@ jobs:
           ./gradlew --no-daemon --stacktrace assembleFullDebug assembleFullRelease assembleLiteRelease 2>&1 | tee build.log
           status=${PIPESTATUS[0]}
           if [ "$status" -ne 0 ]; then
-            grep -E "^e: |What went wrong|^> |error:|FAILED" build.log | head -30 | while IFS= read -r line; do echo "::error::$line"; done
+            grep -E -A3 "^e: |What went wrong|Caused by|OutOfMemory|Execution failed" build.log | grep -v "^--$" | head -40 | while IFS= read -r line; do echo "::error::$line"; done
             exit "$status"
           fi
 

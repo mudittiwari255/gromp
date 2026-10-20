@@ -61,3 +61,10 @@ data class LockRule(
 )
 
 fun LockRule.hasNoLocks(): Boolean = dailyLimitMin == null && !pauseEnabled && !focusBlocked
+
+/** A shared daily limit for every app in one category, e.g. Social 1h. [category] is a [app.gromp.data.Category] name. */
+@Entity(tableName = "category_rule")
+data class CategoryRule(
+    @PrimaryKey val category: String,
+    val dailyLimitMin: Int,
+)

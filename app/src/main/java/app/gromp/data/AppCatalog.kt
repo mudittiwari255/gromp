@@ -38,7 +38,11 @@ class AppCatalog(private val context: Context) {
         null
     }
 
-    fun category(pkg: String): Category {
+    private val categories = ConcurrentHashMap<String, Category>()
+
+    fun category(pkg: String): Category = categories.getOrPut(pkg) { lookupCategory(pkg) }
+
+    private fun lookupCategory(pkg: String): Category {
         OVERRIDES.entries.firstOrNull { pkg.startsWith(it.key) }?.let { return it.value }
         val info = try { pm.getApplicationInfo(pkg, 0) } catch (_: Exception) { return Category.Other }
         return when (info.category) {

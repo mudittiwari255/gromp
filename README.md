@@ -17,6 +17,7 @@ A calm, fully offline Android app that shows you where your phone time goes, and
 | Insights | Rule-based, explainable patterns (quick checks, evening pull, notification sources, first-pickup trend, calmest day, biggest app) and goal days with no streak guilt |
 | Settings | Daily limit, locks status, focus hours, locked apps, permissions, battery tips, export/restore backup, delete everything |
 | **Locks (v1.5)** | *Breathe before opening* (5-second pause), *daily limit* screen (hold 3 s for 5 more minutes), and *focus hours* (selected apps rest; hold 5 s to open for 5 minutes) |
+| **Category limits** | One daily limit shared by every app in a category (e.g. Social 1h). Whichever runs out first, the app's own limit or its category's, shows the limit screen; "5 more minutes" applies to the whole category |
 
 ## Editions
 
@@ -62,7 +63,7 @@ Every push to `main` runs the GitHub Actions workflow in `.github/workflows/andr
 
 **Releases:** bump `versionName` (and `versionCode`) in `app/build.gradle.kts` and push to `main`. The Release workflow builds the APK, tags `v<version>` and publishes it on the GitHub Releases page. If that version already has a release, nothing happens.
 
-**Signing:** add these repository secrets so every release is signed with the same key and updates install over each other: `GROMP_KEYSTORE_BASE64` (the .jks file, base64-encoded), `GROMP_KEYSTORE_PASSWORD`, `GROMP_KEY_ALIAS`, `GROMP_KEY_PASSWORD`. Without them, CI signs with a throwaway debug key, so each release needs an uninstall before installing.
+**Signing:** add these repository secrets so every release is signed with the same key and updates install over each other: `GROMP_KEYSTORE_BASE64` (the .jks file, base64-encoded), `GROMP_KEYSTORE_PASSWORD`, `GROMP_KEY_ALIAS`, `GROMP_KEY_PASSWORD`. Without them, builds use the development key committed in `signing/dev.keystore`, so updates install over each other. That key is public, so set up your own before distributing Gromp to other people.
 
 ## First run on a phone
 
