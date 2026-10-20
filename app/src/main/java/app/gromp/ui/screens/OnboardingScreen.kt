@@ -26,7 +26,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import app.gromp.ui.components.GCard
 import app.gromp.ui.components.GIcons
+import app.gromp.ui.components.SmallPill
 import app.gromp.ui.components.IconTile
 import app.gromp.ui.components.PrimaryButton
 import app.gromp.ui.theme.G
@@ -35,6 +41,7 @@ import app.gromp.util.Permissions
 @Composable
 fun OnboardingScreen(hasAccess: Boolean, onContinue: () -> Unit) {
     val context = LocalContext.current
+    var asked by rememberSaveable { mutableStateOf(false) }
     Column(
         Modifier
             .fillMaxSize()
@@ -81,7 +88,24 @@ fun OnboardingScreen(hasAccess: Boolean, onContinue: () -> Unit) {
         if (hasAccess) {
             PrimaryButton("Let's go", onContinue, Modifier.fillMaxWidth())
         } else {
-            PrimaryButton("Grant usage access", { context.startActivity(Permissions.usageAccessIntent(context)) }, Modifier.fillMaxWidth())
+            if (asked) {
+                GCard(spacing = 8.dp) {
+                    Text("Switch greyed out?", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = G.Text)
+                    Text(
+                        "Android blocks this setting for apps installed outside an app store until you allow it:\n" +
+                            "1. Open Gromp's App info below.\n" +
+                            "2. Tap ⋮ (top right) › Allow restricted settings.\n" +
+                            "3. Come back and grant usage access again.",
+                        fontSize = 13.sp, lineHeight = 20.sp, color = G.Muted,
+                    )
+                    SmallPill("Open App info", { context.startActivity(Permissions.appInfoIntent(context)) }, filled = false)
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+            PrimaryButton("Grant usage access", {
+                asked = true
+                context.startActivity(Permissions.usageAccessIntent(context))
+            }, Modifier.fillMaxWidth())
             Spacer(Modifier.height(12.dp))
             Text(
                 "Opens Android Settings. Find Gromp, switch it on, then come back.",

@@ -36,6 +36,7 @@ fun LocksDisclosureDialog(onDismiss: () -> Unit) {
                 Text("Locks use Android's Accessibility service so Gromp can notice when an app you chose comes to the front, and show your pause, limit or focus screen.", color = G.Text, fontSize = 15.sp)
                 Text("Gromp does not read what's on your screen, does not see what you type, and has no internet access. It only checks which app just opened.", color = G.Muted, fontSize = 14.sp)
                 Text("On the next screen, find Gromp locks under Installed or Downloaded apps and switch it on.", color = G.Muted, fontSize = 14.sp)
+                Text("If it's greyed out: Settings › Apps › Gromp › ⋮ › Allow restricted settings, then try again.", color = G.Muted, fontSize = 14.sp)
             }
         },
         confirmButton = {
