@@ -1,6 +1,7 @@
 name: Release
 
 # Publishes a release whenever versionName in app/build.gradle.kts is new.
+# Re-running is safe: versions that already have a release are skipped.
 on:
   push:
     branches: [ main ]
