@@ -17,15 +17,19 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - uses: android-actions/setup-android@v3
-
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Unit tests
         run: ./gradlew --no-daemon testFullDebugUnitTest
 
       - name: Build APKs
-        run: ./gradlew --no-daemon assembleFullDebug assembleFullRelease assembleLiteRelease
+        run: |
+          ./gradlew --no-daemon --stacktrace assembleFullDebug assembleFullRelease assembleLiteRelease 2>&1 | tee build.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            grep -E "^e: |What went wrong|^> |error:|FAILED" build.log | head -30 | while IFS= read -r line; do echo "::error::$line"; done
+            exit "$status"
+          fi
 
       - name: Verify permissions
         run: |

@@ -34,9 +34,6 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - uses: android-actions/setup-android@v3
-        if: steps.v.outputs.skip != 'true'
-
       - uses: gradle/actions/setup-gradle@v4
         if: steps.v.outputs.skip != 'true'
 
@@ -54,7 +51,12 @@ jobs:
           else
             echo "::warning::No signing secrets set; release APKs use a throwaway debug key."
           fi
-          ./gradlew --no-daemon testFullDebugUnitTest assembleFullRelease assembleLiteRelease
+          ./gradlew --no-daemon --stacktrace testFullDebugUnitTest assembleFullRelease assembleLiteRelease 2>&1 | tee build.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            grep -E "^e: |What went wrong|^> |error:|FAILED" build.log | head -30 | while IFS= read -r line; do echo "::error::$line"; done
+            exit "$status"
+          fi
 
       - name: Verify permissions
         if: steps.v.outputs.skip != 'true'
